@@ -1,0 +1,34 @@
+# IDE / Visual Studio / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln.user
+*.userosscache
+*.sln.docstates
+
+# Build Results
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+TestResults/
+*.TestResults
+
+# Windows/Mac specifics
+Thumbs.db
+.DS_Store
+
+# ReSharper / JetBrains
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Nuget
+packages/
+*.nupkg
+
+# Temporary files
+*.swp
+*.~*
+*.tmp
+*.bak
