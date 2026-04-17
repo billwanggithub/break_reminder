@@ -1,6 +1,10 @@
 # IDE / Visual Studio / VS Code
 .vs/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/settings.json
 *.user
 *.suo
 *.sln.user
@@ -11,6 +15,7 @@
 [Bb]in/
 [Oo]bj/
 [Oo]ut/
+publish/
 TestResults/
 *.TestResults
 

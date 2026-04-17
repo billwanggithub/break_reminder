@@ -20,6 +20,7 @@ public partial class App : Application
     private DispatcherTimer _timer = null!;
     private MainWindow _settingsWindow = null!;
     private string _settingsPath = null!;
+    private ReminderWindow? _reminderWindow;
     
     // Interval in minutes
     public int ReminderIntervalMinutes { get; set; } = 45;
@@ -40,8 +41,10 @@ public partial class App : Application
         // Create the taskbar icon
         _notifyIcon = new TaskbarIcon();
         
-        // Extract default application icon
-        _notifyIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);
+        // Extract default application icon (use process path for single-file compatibility)
+        string? exePath = Environment.ProcessPath;
+        if (exePath != null)
+            _notifyIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(exePath);
         _notifyIcon.ToolTipText = "休息提醒小幫手 (雙擊開啟設定)";
         _notifyIcon.DoubleClickCommand = new RelayCommand(ShowSettings);
 
@@ -118,17 +121,25 @@ public partial class App : Application
 
     private void ShowNotification()
     {
-        // 顯示 WPF 彈出視窗及提示音
         Application.Current.Dispatcher.Invoke(() =>
         {
-            var reminder = new ReminderWindow();
-            reminder.Show();
-            reminder.Activate();
-        });
+            if (_reminderWindow != null)
+            {
+                _reminderWindow.Activate();
+                return;
+            }
 
-        // Reset timer after showing notification
-        _timer.Stop();
-        _timer.Start();
+            _timer.Stop();
+
+            _reminderWindow = new ReminderWindow();
+            _reminderWindow.Closed += (_, _) =>
+            {
+                _reminderWindow = null;
+                _timer.Start();
+            };
+            _reminderWindow.Show();
+            _reminderWindow.Activate();
+        });
     }
 
     private void ShowSettings()

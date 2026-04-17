@@ -1,0 +1,67 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Publish (self-contained single-file)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "publish",
+                "${workspaceFolder}/BreakReminder.csproj",
+                "-c", "Release",
+                "-r", "win-x64",
+                "--self-contained", "true",
+                "-p:PublishSingleFile=true",
+                "-p:IncludeNativeLibrariesForSelfExtract=true",
+                "-p:EnableCompressionInSingleFile=true",
+                "-o", "${workspaceFolder}/publish"
+            ],
+            "problemMatcher": "$msCompile",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "options": {
+                "statusbar": {
+                    "hide": true
+                }
+            }
+        },
+        {
+            "label": "Open publish folder",
+            "type": "shell",
+            "command": "explorer",
+            "args": [
+                "${workspaceFolder}\\publish"
+            ],
+            "presentation": {
+                "reveal": "never",
+                "panel": "shared"
+            },
+            "problemMatcher": [],
+            "options": {
+                "statusbar": {
+                    "hide": true
+                }
+            }
+        },
+        {
+            "label": "Publish + Open folder",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Publish (self-contained single-file)",
+                "Open publish folder"
+            ],
+            "problemMatcher": [],
+            "options": {
+                "statusbar": {
+                    "label": "$(rocket) Publish",
+                    "tooltip": "Publish self-contained single-file exe, then open ./publish",
+                    "color": "#4EC9B0"
+                }
+            }
+        }
+    ]
+}
+</content>
