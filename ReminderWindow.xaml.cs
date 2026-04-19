@@ -5,12 +5,19 @@ namespace BreakReminder;
 
 public partial class ReminderWindow : Window
 {
-    public ReminderWindow()
+    public ReminderWindow(string? message = null)
     {
         InitializeComponent();
-        
-        // 播放系統提示音 (驚嘆號音效) 1次
-        SystemSounds.Exclamation.Play();
+
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            MessageText.Text = message;
+        }
+
+        if (Application.Current is App app && app.PlaySound)
+        {
+            SystemSounds.Exclamation.Play();
+        }
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)

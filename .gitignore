@@ -32,6 +32,9 @@ _ReSharper*/
 packages/
 *.nupkg
 
+# Claude harness
+.claude/
+
 # Temporary files
 *.swp
 *.~*

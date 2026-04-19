@@ -5,10 +5,10 @@
         WindowStartupLocation="CenterScreen" Topmost="True" ResizeMode="NoResize"
         WindowStyle="ToolWindow">
     <DockPanel Margin="20">
-        <Button DockPanel.Dock="Bottom" Content="我知道了，這就去休息" Height="50" FontSize="20" Click="CloseButton_Click" Background="#FF3B82F6" Foreground="White" FontWeight="Bold" Cursor="Hand"/>
+        <Button DockPanel.Dock="Bottom" Content="我知道了" Height="50" FontSize="20" Click="CloseButton_Click" Background="#FF3B82F6" Foreground="White" FontWeight="Bold" Cursor="Hand"/>
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-            <TextBlock Text="⏰ 時間到！" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,20"/>
-            <TextBlock Text="現在立刻離開座位，喝杯水，讓眼睛過濾一下吧！" FontSize="18" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+            <TextBlock x:Name="HeadlineText" Text="⏰ 時間到！" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+            <TextBlock x:Name="MessageText" Text="現在立刻離開座位，喝杯水，讓眼睛過濾一下吧！" FontSize="18" HorizontalAlignment="Center" TextWrapping="Wrap"/>
         </StackPanel>
     </DockPanel>
 </Window>

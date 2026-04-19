@@ -21,11 +21,6 @@
                 "reveal": "always",
                 "panel": "dedicated",
                 "clear": true
-            },
-            "options": {
-                "statusbar": {
-                    "hide": true
-                }
             }
         },
         {
@@ -39,29 +34,48 @@
                 "reveal": "never",
                 "panel": "shared"
             },
-            "problemMatcher": [],
-            "options": {
-                "statusbar": {
-                    "hide": true
-                }
-            }
+            "problemMatcher": []
+        },
+        {
+            "label": "Bump version (patch)",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "${workspaceFolder}\\build\\bump-version.ps1"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Zip publish folder",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "${workspaceFolder}\\build\\zip-publish.ps1"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
         },
         {
             "label": "Publish + Open folder",
             "dependsOrder": "sequence",
             "dependsOn": [
+                "Bump version (patch)",
                 "Publish (self-contained single-file)",
+                "Zip publish folder",
                 "Open publish folder"
             ],
-            "problemMatcher": [],
-            "options": {
-                "statusbar": {
-                    "label": "$(rocket) Publish",
-                    "tooltip": "Publish self-contained single-file exe, then open ./publish",
-                    "color": "#4EC9B0"
-                }
-            }
+            "problemMatcher": []
         }
     ]
 }
-</content>

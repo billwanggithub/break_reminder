@@ -1,0 +1,10 @@
+{
+    "VsCodeTaskButtons.showCounter": false,
+    "VsCodeTaskButtons.tasks": [
+        {
+            "label": "$(rocket) Publish",
+            "task": "Publish + Open folder",
+            "tooltip": "Bump patch version, publish self-contained single-file exe, open ./publish"
+        }
+    ]
+}

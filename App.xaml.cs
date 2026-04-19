@@ -11,6 +11,9 @@ using Microsoft.Win32;
 using System.IO;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace BreakReminder;
 
@@ -18,12 +21,17 @@ public partial class App : Application
 {
     private TaskbarIcon _notifyIcon = null!;
     private DispatcherTimer _timer = null!;
+    private DispatcherTimer _scheduleTimer = null!;
     private MainWindow _settingsWindow = null!;
     private string _settingsPath = null!;
     private ReminderWindow? _reminderWindow;
-    
-    // Interval in minutes
+    private readonly Queue<string?> _pendingMessages = new();
+
     public int ReminderIntervalMinutes { get; set; } = 45;
+
+    public bool PlaySound { get; set; } = false;
+
+    public ObservableCollection<ScheduledReminder> ScheduledReminders { get; } = new();
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -35,27 +43,23 @@ public partial class App : Application
 
         LoadSettings();
 
-        // Initialize Settings Window
         _settingsWindow = new MainWindow();
 
-        // Create the taskbar icon
         _notifyIcon = new TaskbarIcon();
-        
-        // Extract default application icon (use process path for single-file compatibility)
+
         string? exePath = Environment.ProcessPath;
         if (exePath != null)
             _notifyIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(exePath);
         _notifyIcon.ToolTipText = "休息提醒小幫手 (雙擊開啟設定)";
         _notifyIcon.DoubleClickCommand = new RelayCommand(ShowSettings);
 
-        // Context Menu
         ContextMenu contextMenu = new ContextMenu();
-        
+
         MenuItem settingsItem = new MenuItem { Header = "設定 (Settings)" };
         settingsItem.Click += (s, ev) => ShowSettings();
-        
+
         MenuItem breakNowItem = new MenuItem { Header = "立刻休息 (Break Now)" };
-        breakNowItem.Click += (s, ev) => ShowNotification();
+        breakNowItem.Click += (s, ev) => ShowNotification(null);
 
         MenuItem exitItem = new MenuItem { Header = "離開 (Exit)" };
         exitItem.Click += (s, ev) => Application.Current.Shutdown();
@@ -66,45 +70,164 @@ public partial class App : Application
         contextMenu.Items.Add(exitItem);
         _notifyIcon.ContextMenu = contextMenu;
 
-        // Auto startup setup
         SetStartup(true);
 
-        // Initialize Timer
         _timer = new DispatcherTimer();
         _timer.Tick += Timer_Tick;
         UpdateTimer();
+
+        _scheduleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        _scheduleTimer.Tick += ScheduleTimer_Tick;
+        _scheduleTimer.Start();
     }
 
     private void LoadSettings()
     {
+        bool hasScheduledKey = false;
+
         if (File.Exists(_settingsPath))
         {
             try
             {
                 var json = File.ReadAllText(_settingsPath);
-                var dict = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, int>>(json);
-                if (dict != null && dict.TryGetValue("IntervalMinutes", out int minutes))
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("IntervalMinutes", out var intervalEl) && intervalEl.TryGetInt32(out int minutes))
                 {
                     ReminderIntervalMinutes = minutes > 0 ? minutes : 45;
                 }
+
+                if (root.TryGetProperty("PlaySound", out var soundEl)
+                    && (soundEl.ValueKind == JsonValueKind.True || soundEl.ValueKind == JsonValueKind.False))
+                {
+                    PlaySound = soundEl.GetBoolean();
+                }
+
+                if (root.TryGetProperty("ScheduledReminders", out var arrEl) && arrEl.ValueKind == JsonValueKind.Array)
+                {
+                    hasScheduledKey = true;
+                    foreach (var item in arrEl.EnumerateArray())
+                    {
+                        var reminder = ParseReminder(item);
+                        if (reminder != null)
+                            ScheduledReminders.Add(reminder);
+                    }
+                }
             }
-            catch { ReminderIntervalMinutes = 45; }
+            catch
+            {
+                ReminderIntervalMinutes = 45;
+            }
+        }
+
+        if (!hasScheduledKey)
+        {
+            SeedDefaultReminders();
+            SaveSettings();
         }
     }
 
-    private void SaveSettings()
+    private static ScheduledReminder? ParseReminder(JsonElement el)
     {
         try
         {
-            var dict = new System.Collections.Generic.Dictionary<string, int> { { "IntervalMinutes", ReminderIntervalMinutes } };
-            File.WriteAllText(_settingsPath, JsonSerializer.Serialize(dict));
+            var r = new ScheduledReminder
+            {
+                Enabled = el.TryGetProperty("Enabled", out var en) && en.GetBoolean(),
+                Message = el.TryGetProperty("Message", out var msg) ? (msg.GetString() ?? "") : "",
+            };
+
+            if (el.TryGetProperty("Time", out var timeEl) && timeEl.GetString() is string timeStr
+                && TimeOnly.TryParse(timeStr, out var t))
+            {
+                r.Time = t;
+            }
+
+            if (el.TryGetProperty("Days", out var daysEl) && daysEl.GetString() is string daysStr
+                && Enum.TryParse<DayOfWeekMask>(daysStr, out var mask))
+            {
+                r.Days = mask;
+            }
+
+            if (el.TryGetProperty("LastFiredDate", out var lfdEl) && lfdEl.ValueKind == JsonValueKind.String
+                && DateOnly.TryParse(lfdEl.GetString(), out var lfd))
+            {
+                r.LastFiredDate = lfd;
+            }
+
+            return r;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void SeedDefaultReminders()
+    {
+        ScheduledReminders.Clear();
+        ScheduledReminders.Add(new ScheduledReminder { Enabled = true, Time = new TimeOnly(11, 55), Days = DayOfWeekMask.Weekdays, Message = "吃飯囉！" });
+        ScheduledReminders.Add(new ScheduledReminder { Enabled = true, Time = new TimeOnly(19, 0), Days = DayOfWeekMask.Weekdays, Message = "下班時間到！" });
+        ScheduledReminders.Add(new ScheduledReminder { Enabled = true, Time = new TimeOnly(0, 0), Days = DayOfWeekMask.All, Message = "該睡覺了！" });
+    }
+
+    public void SaveSettings()
+    {
+        try
+        {
+            var reminders = new List<object>();
+            foreach (var r in ScheduledReminders)
+            {
+                var obj = new Dictionary<string, object?>
+                {
+                    ["Enabled"] = r.Enabled,
+                    ["Time"] = r.Time.ToString("HH:mm"),
+                    ["Days"] = r.Days.ToString(),
+                    ["Message"] = r.Message,
+                };
+                if (r.LastFiredDate.HasValue)
+                    obj["LastFiredDate"] = r.LastFiredDate.Value.ToString("yyyy-MM-dd");
+                reminders.Add(obj);
+            }
+
+            var payload = new Dictionary<string, object>
+            {
+                ["IntervalMinutes"] = ReminderIntervalMinutes,
+                ["PlaySound"] = PlaySound,
+                ["ScheduledReminders"] = reminders,
+            };
+            File.WriteAllText(_settingsPath, JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }));
         }
         catch { }
     }
 
     private void Timer_Tick(object? sender, EventArgs e)
     {
-        ShowNotification();
+        ShowNotification(null);
+    }
+
+    private void ScheduleTimer_Tick(object? sender, EventArgs e)
+    {
+        var now = DateTime.Now;
+        var today = DateOnly.FromDateTime(now);
+        var currentTime = TimeOnly.FromDateTime(now);
+        bool anyFired = false;
+
+        foreach (var r in ScheduledReminders)
+        {
+            if (!r.Enabled) continue;
+            if (r.LastFiredDate == today) continue;
+            if (!r.Days.Matches(now.DayOfWeek)) continue;
+            if (currentTime < r.Time) continue;
+            if ((currentTime.ToTimeSpan() - r.Time.ToTimeSpan()) > TimeSpan.FromMinutes(2)) continue;
+
+            r.LastFiredDate = today;
+            anyFired = true;
+            ShowNotification(r.Message);
+        }
+
+        if (anyFired) SaveSettings();
     }
 
     public void UpdateTimer()
@@ -114,32 +237,46 @@ public partial class App : Application
         _timer.Start();
 
         SaveSettings();
-        
+
         if (_notifyIcon != null)
             _notifyIcon.ToolTipText = $"休息提醒小幫手 (每 {ReminderIntervalMinutes} 分鐘提醒)";
     }
 
-    private void ShowNotification()
+    private void ShowNotification(string? message)
     {
         Application.Current.Dispatcher.Invoke(() =>
         {
             if (_reminderWindow != null)
             {
-                _reminderWindow.Activate();
+                _pendingMessages.Enqueue(message);
                 return;
             }
 
-            _timer.Stop();
-
-            _reminderWindow = new ReminderWindow();
-            _reminderWindow.Closed += (_, _) =>
-            {
-                _reminderWindow = null;
-                _timer.Start();
-            };
-            _reminderWindow.Show();
-            _reminderWindow.Activate();
+            OpenReminderWindow(message);
         });
+    }
+
+    private void OpenReminderWindow(string? message)
+    {
+        _timer.Stop();
+
+        _reminderWindow = new ReminderWindow(message);
+        _reminderWindow.Closed += (_, _) =>
+        {
+            _reminderWindow = null;
+
+            if (_pendingMessages.Count > 0)
+            {
+                var next = _pendingMessages.Dequeue();
+                Application.Current.Dispatcher.BeginInvoke(new Action(() => OpenReminderWindow(next)));
+            }
+            else
+            {
+                _timer.Start();
+            }
+        };
+        _reminderWindow.Show();
+        _reminderWindow.Activate();
     }
 
     private void ShowSettings()
@@ -197,4 +334,3 @@ public class RelayCommand : System.Windows.Input.ICommand
     public bool CanExecute(object? parameter) => true;
     public void Execute(object? parameter) => _execute();
 }
-

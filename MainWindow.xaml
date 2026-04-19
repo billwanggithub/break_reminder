@@ -5,22 +5,89 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:BreakReminder"
         mc:Ignorable="d"
-        Title="設定 - 休息提醒小幫手" Height="200" Width="300"
-        WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
+        Title="設定 - 休息提醒小幫手" Height="560" Width="640"
+        WindowStartupLocation="CenterScreen"
         Closing="Window_Closing">
-    <DockPanel Margin="20">
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,20" HorizontalAlignment="Center">
-            <TextBlock Text="提醒間隔時間：" VerticalAlignment="Center" FontSize="16" />
-            <TextBox x:Name="IntervalTextBox" Width="60" FontSize="16" Padding="4"
+    <Window.Resources>
+        <Style x:Key="DayToggle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Margin" Value="1,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+    </Window.Resources>
+    <DockPanel Margin="16">
+        <!-- Top: interval + sound -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="休息間隔：" VerticalAlignment="Center" FontSize="14"/>
+            <TextBox x:Name="IntervalTextBox" Width="60" FontSize="14" Padding="4"
                      Text="{Binding ReminderIntervalMinutes, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=LostFocus}"
-                     KeyDown="TextBox_KeyDown" />
-            <TextBlock Text=" 分鐘" VerticalAlignment="Center" FontSize="16" />
+                     KeyDown="TextBox_KeyDown"/>
+            <TextBlock Text=" 分鐘" VerticalAlignment="Center" FontSize="14"/>
+            <CheckBox x:Name="PlaySoundCheckBox" Content="播放提示音" VerticalAlignment="Center" Margin="24,0,0,0" FontSize="14"
+                      IsChecked="{Binding PlaySound, RelativeSource={RelativeSource AncestorType=Window}}"/>
         </StackPanel>
 
-        <Button DockPanel.Dock="Bottom" x:Name="SaveButton" Content="儲存並隱藏" Height="35" FontSize="14" Click="SaveButton_Click"/>
-        
-        <!-- Empty space in middle -->
-        <TextBlock Text="程式會常駐於右下角系統列。&#10;您可以隨時點兩下圖示開啟此設定。" 
-                   TextAlignment="Center" Foreground="Gray" VerticalAlignment="Center" />
+        <!-- Bottom: save -->
+        <Button DockPanel.Dock="Bottom" x:Name="SaveButton" Content="儲存並隱藏" Height="36" FontSize="14"
+                Margin="0,12,0,0" Click="SaveButton_Click"/>
+
+        <!-- Add button above list bottom -->
+        <Button DockPanel.Dock="Bottom" Content="+ 新增提醒" Height="30" FontSize="13"
+                Margin="0,8,0,0" Click="AddReminder_Click"/>
+
+        <!-- Scheduled reminders list -->
+        <DockPanel DockPanel.Dock="Top">
+            <TextBlock DockPanel.Dock="Top" Text="排程提醒" FontSize="14" FontWeight="Bold" Margin="0,0,0,6"/>
+
+            <!-- Column header -->
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="36"/>
+                    <ColumnDefinition Width="72"/>
+                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="36"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="啟用" FontSize="11" Foreground="Gray" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="時間" FontSize="11" Foreground="Gray" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="一 二 三 四 五 六 日" FontSize="11" Foreground="Gray" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Column="3" Text="訊息" FontSize="11" Foreground="Gray" Margin="4,0,0,0"/>
+            </Grid>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="ReminderList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="72"/>
+                                    <ColumnDefinition Width="220"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="36"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding TimeText, UpdateSourceTrigger=LostFocus}" Padding="4" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <ToggleButton Style="{StaticResource DayToggle}" Content="一" IsChecked="{Binding Mon}"/>
+                                    <ToggleButton Style="{StaticResource DayToggle}" Content="二" IsChecked="{Binding Tue}"/>
+                                    <ToggleButton Style="{StaticResource DayToggle}" Content="三" IsChecked="{Binding Wed}"/>
+                                    <ToggleButton Style="{StaticResource DayToggle}" Content="四" IsChecked="{Binding Thu}"/>
+                                    <ToggleButton Style="{StaticResource DayToggle}" Content="五" IsChecked="{Binding Fri}"/>
+                                    <ToggleButton Style="{StaticResource DayToggle}" Content="六" IsChecked="{Binding Sat}"/>
+                                    <ToggleButton Style="{StaticResource DayToggle}" Content="日" IsChecked="{Binding Sun}"/>
+                                </StackPanel>
+                                <TextBox Grid.Column="3" Text="{Binding Message, UpdateSourceTrigger=LostFocus}" Padding="4" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                                <Button Grid.Column="4" Content="✕" Width="28" Height="28" FontSize="12"
+                                        Click="DeleteReminder_Click" Tag="{Binding}"
+                                        ToolTip="刪除此提醒"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
     </DockPanel>
 </Window>
